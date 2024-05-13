@@ -1,0 +1,32 @@
+{
+  "scripts": {
+    "dev": "nodemon ./src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "db": "WITH_MIGRATION_DATASOURCE=true typeorm-ts-node-commonjs",
+    "db:migration:run": "yarn db migration:run -d src/orm/index.ts",
+    "db:migration:revert": "yarn db migration:revert -d src/orm/index.ts",
+    "db:migration:generate": "yarn db migration:generate -d src/orm/index.ts src/orm/migrations/migration",
+    "db:migration:create": "yarn db migration:create src/orm/migrations/migration"
+  },
+  "dependencies": {
+    "@telegram-auth/server": "^1.0.3",
+    "@ton/core": "^0.56.3",
+    "@ton/crypto": "^3.2.0",
+    "@types/node-cron": "^3.0.11",
+    "better-sqlite3": "^10.0.0",
+    "dotenv": "^16.4.5",
+    "human-id": "^4.1.1",
+    "node-cron": "^3.0.3",
+    "react-avatar": "^5.0.3",
+    "telegraf": "^4.16.3",
+    "tonapi-sdk-js": "^1.0.9",
+    "ts-node": "^10.9.2",
+    "typeorm": "^0.3.20",
+    "typescript": "^5.4.5",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7"
+  }
+}
