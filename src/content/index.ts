@@ -14,26 +14,31 @@ export function getNotification(data: NotificationData) {
   const { tickerValue, isNewHolder, emoji, address, tokenInfo } = data;
   const symbol = tokenInfo.metadata.symbol;
 
+  const tickerValueFloat = tickerValue ? parseFloat(tickerValue) : null;
+
   const fiatCurrency = getFiatCurrency();
   const fiatFormat = new Intl.NumberFormat("en", {
     style: "currency",
     currency: fiatCurrency,
   });
-  const cryptoFormat = new Intl.NumberFormat("en", {
-    style: "unit",
-    unit: symbol,
-  });
+  const cryptoFormat = new Intl.NumberFormat("en", { style: "decimal" });
 
   const tokenBalance = Math.floor(parseFloat(fromNano(address.balance)));
 
   const spentSubstring =
-    tickerValue === null
+    tickerValueFloat === null
       ? ""
-      : fiatFormat.format(parseFloat(tickerValue) * tokenBalance);
-  const supplySubstring = cryptoFormat.format(
-    BigInt(fromNano(tokenInfo.total_supply)),
-  );
-  const balanceSubstring = cryptoFormat.format(tokenBalance);
+      : fiatFormat.format(tickerValueFloat * tokenBalance);
+  const marketcapSubstring = `${
+    tickerValueFloat === null
+      ? ""
+      : fiatFormat.format(
+          parseFloat(fromNano(BigInt(tokenInfo.total_supply))) *
+            tickerValueFloat,
+        )
+  }`;
+
+  const balanceSubstring = `${cryptoFormat.format(tokenBalance)} ${symbol}`;
 
   return (
     `🚨 ${symbol} New Buy!🚨
@@ -43,12 +48,9 @@ export function getNotification(data: NotificationData) {
     💰Spent: ${spentSubstring}
     🧳Bought: ${balanceSubstring}
     ${isNewHolder ? "👋New Holder! Welcome" : ""}
-    📊Total supply: ${supplySubstring}
+    📊Market cap: ${marketcapSubstring}
     💸Check buyers [wallet](https://tonviewer.com/${address.address})
-    📈Chart | Buy
-    👨${tokenInfo.holders_count} Holders
-    
-    🚀Trending position 1`
+    👨${tokenInfo.holders_count} Holders`
       .split("\n")
       .map((line) => line.trim())
       .join("\n")
