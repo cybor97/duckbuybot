@@ -40,14 +40,17 @@ export async function syncHolders(opts: {
           tokenInfo,
           isNewHolder: true,
           tickerValue,
-          diff: BigInt(fromNano(holder.balance)),
+          diff: fromNano(holder.balance),
         });
-        await holderDao.findOrUpdateHolder(holder.address, holder.balance);
+        await holderDao.findOrUpdateHolder(
+          tokenAddress,
+          holder.address,
+          holder.balance,
+        );
         continue;
       }
       if (holder.balance > dbHolderBalance) {
-        const diff =
-          BigInt(fromNano(holder.balance)) - BigInt(fromNano(dbHolderBalance));
+        const diff = fromNano(BigInt(holder.balance) - BigInt(dbHolderBalance));
         await broadcastNotification({
           telegraf,
           configs,
@@ -57,7 +60,11 @@ export async function syncHolders(opts: {
           tickerValue,
           diff,
         });
-        await holderDao.findOrUpdateHolder(holder.address, holder.balance);
+        await holderDao.findOrUpdateHolder(
+          tokenAddress,
+          holder.address,
+          holder.balance,
+        );
       }
     }
   }

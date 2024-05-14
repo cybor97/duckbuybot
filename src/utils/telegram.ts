@@ -10,7 +10,7 @@ export async function broadcastNotification(opts: {
   tokenInfo: JettonInfo;
   tickerValue: string | null;
   isNewHolder: boolean;
-  diff: bigint;
+  diff: string;
 }) {
   const {
     telegraf,
@@ -22,14 +22,15 @@ export async function broadcastNotification(opts: {
     diff,
   } = opts;
   for (const config of configs) {
-    if (config.value.minBuy === null || diff > BigInt(config.value.minBuy)) {
+    if (config.value.minBuy === null || diff > config.value.minBuy) {
       const content = getNotification({
         address,
         tokenInfo,
         isNewHolder,
         tickerValue,
         // it will always be string, null or false. True is never going to happen, otherwise noone cares :D
-        emoji: typeof config.value.emoji === 'boolean'  ? null : config.value.emoji,
+        emoji:
+          typeof config.value.emoji === "boolean" ? null : config.value.emoji,
       });
       await sendNotification(telegraf, config, content);
     }

@@ -8,6 +8,7 @@ import { HolderDao } from "../orm/dao/holderDao";
 import { syncHolders } from "../cron/syncHolders";
 import { TickerDao } from "../orm/dao/tickerDao";
 import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
+import { inspect } from "util";
 
 export async function initCron() {
   const httpClient = new HttpClient({
@@ -48,9 +49,15 @@ function scheduleSyncHolders(opts: {
       running = true;
 
       try {
-        await syncHolders({ telegraf, configDao, holderDao, tickerDao, client });
+        await syncHolders({
+          telegraf,
+          configDao,
+          holderDao,
+          tickerDao,
+          client,
+        });
       } catch (err) {
-        logger.error((err as Error).message);
+        logger.error(inspect(err));
       }
 
       running = false;
@@ -91,7 +98,7 @@ function scheduleTickerUpdate(opts: { tickerDao: TickerDao }) {
           }
         }
       } catch (err) {
-        logger.error((err as Error).message);
+        logger.error(inspect(err));
       }
 
       running = false;

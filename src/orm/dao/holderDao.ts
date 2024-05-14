@@ -18,24 +18,23 @@ export class HolderDao {
   }
 
   public async findOrUpdateHolder(
+    tokenAddress: string,
     address: string,
     balance: string,
-  ): Promise<string> {
+  ): Promise<void> {
     const holder = await this.holdersRepository.findOne({ where: { address } });
     if (!holder) {
       const newHolder = new Holder();
+      newHolder.tokenAddress = tokenAddress;
       newHolder.address = address;
       newHolder.balance = balance;
       await this.holdersRepository.save(newHolder);
-      return balance;
+      return;
     }
     if (balance !== holder.balance) {
-      const diff = BigInt(balance) - BigInt(holder.balance);
       holder.balance = balance;
       await this.holdersRepository.save(holder);
-      return diff.toString();
     }
-    return "0";
   }
 
   public async getAllHolders(tokenAddress: string): Promise<Holder[]> {

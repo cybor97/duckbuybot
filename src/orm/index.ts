@@ -7,7 +7,8 @@ import { Ticker } from "./entities/ticker";
 
 const AppDataSource = new DataSource({
   type: "better-sqlite3",
-  database: join(__dirname, "app.db"),
+  // at the root of the project
+  database: join(__dirname, "../../app.db"),
   entities: [Config, Holder, Ticker],
   migrations: [join(__dirname, "migrations/*.ts")],
 });

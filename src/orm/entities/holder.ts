@@ -17,7 +17,7 @@ export class Holder {
   address: string;
 
   @Column("varchar")
-  @Index("holder_token_address_idx", { unique: true })
+  @Index("holder_token_address_idx", { unique: false })
   tokenAddress: string;
 
   @Column("varchar")
