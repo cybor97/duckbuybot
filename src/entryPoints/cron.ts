@@ -41,7 +41,7 @@ function scheduleSyncHolders(opts: {
   const { telegraf, configDao, holderDao, tickerDao, client } = opts;
   let running = false;
   cron.schedule(
-    "* * * * *",
+    "*/5 * * * *",
     async () => {
       if (running) {
         return;

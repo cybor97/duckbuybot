@@ -24,6 +24,9 @@ export class Config {
   @Index("token_address_idx", { unique: false })
   tokenAddress: string | null;
 
+  @Column("boolean", { default: true, nullable: false })
+  firstSync: boolean;
+
   @CreateDateColumn({ type: "datetime", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 

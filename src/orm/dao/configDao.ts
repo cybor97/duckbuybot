@@ -50,4 +50,15 @@ export class ConfigDao {
   public async findConfigsByAddress(address: string) {
     return this.configRepository.find({ where: { tokenAddress: address } });
   }
+
+  /**
+   * Oh, not MY first sync :D
+   * @param address Token address
+   */
+  public async notFirstSync(address: string) {
+    await this.configRepository.update(
+      { tokenAddress: address },
+      { firstSync: false },
+    );
+  }
 }
