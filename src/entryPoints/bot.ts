@@ -4,8 +4,11 @@ dotenv.config();
 
 import { Telegraf } from "telegraf";
 import { ConfigDao } from "../orm/dao/configDao";
-import { Address } from "@ton/core";
+import { Address, toNano } from "@ton/core";
 import { HttpClient, Api } from "tonapi-sdk-js";
+import { TickerDao } from "../orm/dao/tickerDao";
+import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
+import { getFiatCurrency } from "../utils/currency";
 
 export async function initBot() {
   const httpClient = new HttpClient({
@@ -19,17 +22,18 @@ export async function initBot() {
   });
   const client = new Api(httpClient);
 
+  const configDao = ConfigDao.getDao();
+  const tickerDao = TickerDao.getDao();
+
   const telegraf = new Telegraf(process.env.BOT_TOKEN as string);
 
   telegraf.telegram.setMyCommands([{ command: "start", description: "Start" }]);
   telegraf.on("message", async (ctx) => {
-    const config = await ConfigDao.getDao().findOrCreateConfig(
-      ctx.chat.id.toString(),
-    );
+    const config = await configDao.findOrCreateConfig(ctx.chat.id.toString());
     if (!config.value.tokenRequested) {
       await ctx.reply("Please send me an address of token to track");
       config.value.tokenRequested = true;
-      await ConfigDao.getDao().updateConfig(config);
+      await configDao.updateConfig(config);
       return;
     }
     if (config.value.tokenRequested && config.tokenAddress === null) {
@@ -50,7 +54,39 @@ export async function initBot() {
           return;
         }
         config.tokenAddress = tokenAddress;
-        await ConfigDao.getDao().updateConfig(config);
+        await configDao.updateConfig(config);
+
+        const dbTicker = await tickerDao.getOrCreateTicker(tokenAddress);
+        if (dbTicker.conmarketcapId === null) {
+          dbTicker.conmarketcapId = await getTONTokenId(tokenAddress);
+          if (dbTicker.conmarketcapId !== null) {
+            await tickerDao.updateTicker(dbTicker);
+          }
+        }
+        if (dbTicker.conmarketcapId === null) {
+          await ctx.reply(
+            `Got token ${tokenAddress} with ${tokenData.holders_count} holders. Though I can't find it on coinmarketcap. I'll try to find it later`,
+          );
+          return;
+        }
+        if (dbTicker.value === null) {
+          const newTickerValue = await getTicker(dbTicker.conmarketcapId);
+          dbTicker.value = newTickerValue;
+          if (newTickerValue !== null) {
+            await tickerDao.updateTicker(dbTicker);
+          }
+        }
+        if (dbTicker.value === null) {
+          await ctx.reply(
+            `Got token ${tokenAddress} with ${tokenData.holders_count} holders. Though there is no ticker for it. I'll try to find it later`,
+          );
+          return;
+        }
+        await ctx.reply(
+          `Got token ${tokenAddress} with ${
+            tokenData.holders_count
+          } holders. Price is ${dbTicker.value} ${getFiatCurrency()}`,
+        );
       } catch (err) {
         await ctx.reply("Unable to get token info");
         return;
@@ -59,7 +95,7 @@ export async function initBot() {
 
     if (!config.value.emojiRequested) {
       config.value.emojiRequested = true;
-      await ConfigDao.getDao().updateConfig(config);
+      await configDao.updateConfig(config);
       await ctx.reply("Please send me some emoji");
       return;
     }
@@ -79,7 +115,7 @@ export async function initBot() {
 
     if (!config.value.gifRequested) {
       config.value.gifRequested = true;
-      await ConfigDao.getDao().updateConfig(config);
+      await configDao.updateConfig(config);
       await ctx.reply("Please send me some animation");
       return;
     }
@@ -99,10 +135,40 @@ export async function initBot() {
       config.value.gif =
         // @ts-expect-error message.animation is expected
         ctx.message.video?.file_id ?? ctx.message.animation?.file_id;
-      await ConfigDao.getDao().updateConfig(config);
+      await configDao.updateConfig(config);
       await ctx.reply("Okay, I'll use this animation");
       // @ts-expect-error message.animation is expected
       await ctx.replyWithVideo(config.value.gif);
+    }
+
+    if (!config.value.minBuyRequested) {
+      config.value.minBuyRequested = true;
+      await configDao.updateConfig(config);
+      await ctx.reply(
+        "Please send me the minimum amount of tokens to care about",
+      );
+      return;
+    }
+    if (config.value.minBuyRequested && config.value.minBuy === null) {
+      // @ts-expect-error message.text is string | undefined
+      if (ctx.message.text?.toLowerCase() === "no") {
+        config.value.minBuy = false;
+        await configDao.updateConfig(config);
+        await ctx.reply("Okay, got it");
+        return;
+      }
+      // @ts-expect-error message.text is string | undefined
+      if (Number.isNaN(parseInt(ctx.message.text))) {
+        await ctx.reply("Please send me a valid number");
+        return;
+      }
+      // @ts-expect-error message.text is string | undefined
+      if (ctx.message.text?.length >= 1) {
+        // @ts-expect-error message.text is string | undefined
+        config.value.minBuy = toNano(ctx.message?.text).toString();
+        await configDao.updateConfig(config);
+        await ctx.reply("Okay, I'll use this amount");
+      }
     }
   });
   telegraf.launch();

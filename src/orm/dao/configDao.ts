@@ -25,9 +25,11 @@ export class ConfigDao {
       newConfig.value = {
         gif: null,
         emoji: null,
+        minBuy: null,
         tokenRequested: false,
         gifRequested: false,
         emojiRequested: false,
+        minBuyRequested: false,
       };
       await this.configRepository.save(newConfig);
       return this.findOrCreateConfig(chatId);

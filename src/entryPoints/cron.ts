@@ -1,8 +1,13 @@
 import cron from "node-cron";
-import { ConfigDao } from "../orm/dao/configDao";
 import { Api, HttpClient } from "tonapi-sdk-js";
 import { Telegraf } from "telegraf";
-import { fromNano } from "@ton/core";
+
+import { ConfigDao } from "../orm/dao/configDao";
+import logger from "../utils/logger";
+import { HolderDao } from "../orm/dao/holderDao";
+import { syncHolders } from "../cron/syncHolders";
+import { TickerDao } from "../orm/dao/tickerDao";
+import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
 
 export async function initCron() {
   const httpClient = new HttpClient({
@@ -18,62 +23,78 @@ export async function initCron() {
   const telegraf = new Telegraf(process.env.BOT_TOKEN as string);
 
   const configDao = ConfigDao.getDao();
+  const holderDao = HolderDao.getDao();
+  const tickerDao = TickerDao.getDao();
 
+  scheduleSyncHolders({ telegraf, configDao, holderDao, tickerDao, client });
+  scheduleTickerUpdate({ tickerDao });
+}
+
+function scheduleSyncHolders(opts: {
+  telegraf: Telegraf;
+  configDao: ConfigDao;
+  holderDao: HolderDao;
+  tickerDao: TickerDao;
+  client: Api<HttpClient>;
+}) {
+  const { telegraf, configDao, holderDao, tickerDao, client } = opts;
+  let running = false;
   cron.schedule(
     "* * * * *",
     async () => {
+      if (running) {
+        return;
+      }
+      running = true;
+
       try {
-        const addresses = await configDao.getTokenAddresses();
-        for (const address of addresses) {
-          const tokenInfo = await client.jettons.getJettonInfo(
-            address.tokenAddress,
-          );
-          const holders = await client.jettons.getJettonHolders(
-            address.tokenAddress,
-          );
-          const configs = await configDao.findConfigsByAddress(
-            address.tokenAddress,
-          );
-          for (const config of configs) {
-            const content = `🚨 DUCK New Buy!🚨 
+        await syncHolders({ telegraf, configDao, holderDao, tickerDao, client });
+      } catch (err) {
+        logger.error((err as Error).message);
+      }
 
-🦆🦆🦆
- 
-🧳Bought: ${Math.floor(
-              parseFloat(fromNano(holders.addresses[0].balance)),
-            )} DUCK 
-👋New Holder! Welcome
-📊Total supply: ${fromNano(tokenInfo.total_supply)} DUCK
-💸Check buyers [wallet](https://tonviewer.com/${holders.addresses[0].address})
-📈Chart | Buy
-👨${tokenInfo.holders_count} Holders
+      running = false;
+    },
+    { runOnInit: true },
+  );
+}
 
-🚀Trending position 1`
-              .split("\n")
-              .map((line) => line.trim())
-              .join("\n");
+function scheduleTickerUpdate(opts: { tickerDao: TickerDao }) {
+  const { tickerDao } = opts;
+  let running = false;
+  const tickerUpdateCron = process.env.TICKER_UPDATE_CRON ?? "*/10 * * * *";
+  cron.schedule(
+    tickerUpdateCron,
+    async () => {
+      if (running) {
+        return;
+      }
+      running = true;
 
-            if (!config.value.gif) {
-              await telegraf.telegram.sendMessage(config.chatId, content, {
-                parse_mode: "Markdown",
-              });
-              return;
-            }
-
-            await telegraf.telegram.sendAnimation(
-              config.chatId,
-              // @ts-expect-error message.animation is expected
-              config.value.gif,
-              {
-                parse_mode: "Markdown",
-                caption: content,
-              },
+      try {
+        const allDbTickers = await tickerDao.getAllTickers();
+        for (const dbTicker of allDbTickers) {
+          if (!dbTicker.conmarketcapId) {
+            dbTicker.conmarketcapId = await getTONTokenId(
+              dbTicker.tokenAddress,
             );
+            await tickerDao.updateTicker(dbTicker);
+          }
+          if (!dbTicker.conmarketcapId) {
+            logger.warn(`No conmarketcapId for ${dbTicker.tokenAddress}`);
+            continue;
+          }
+          const newTickerValue = await getTicker(dbTicker.conmarketcapId);
+          if (newTickerValue !== dbTicker.value) {
+            dbTicker.value = newTickerValue;
+            await tickerDao.updateTicker(dbTicker);
           }
         }
       } catch (err) {
-        console.log(err);
+        logger.error((err as Error).message);
       }
+
+      running = false;
     },
     { runOnInit: true },
   );

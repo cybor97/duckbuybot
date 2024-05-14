@@ -37,4 +37,10 @@ export class HolderDao {
     }
     return "0";
   }
+
+  public async getAllHolders(tokenAddress: string): Promise<Holder[]> {
+    return this.holdersRepository.find({
+      where: { tokenAddress },
+    });
+  }
 }
