@@ -65,7 +65,7 @@ export async function initBot() {
         }
         if (dbTicker.conmarketcapId === null) {
           await ctx.reply(
-            `Got token ${tokenAddress} with ${tokenData.holders_count} holders. Though I can't find it on coinmarketcap. I'll try to find it later`,
+            `Got token ${tokenData.metadata.symbol} with ${tokenData.holders_count} holders. Though I can't find it on coinmarketcap. I'll try to find it later`,
           );
           return;
         }
@@ -78,14 +78,20 @@ export async function initBot() {
         }
         if (dbTicker.value === null) {
           await ctx.reply(
-            `Got token ${tokenAddress} with ${tokenData.holders_count} holders. Though there is no ticker for it. I'll try to find it later`,
+            `Got token ${tokenData.metadata.symbol} with ${tokenData.holders_count} holders. Though there is no ticker for it. I'll try to find it later`,
           );
           return;
         }
+        const fiatCurrency = getFiatCurrency();
+        const fiatFormat = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: fiatCurrency,
+        });
+
         await ctx.reply(
-          `Got token ${tokenAddress} with ${
+          `Got token ${tokenData.metadata.symbol} with ${
             tokenData.holders_count
-          } holders. Price is ${dbTicker.value} ${getFiatCurrency()}`,
+          } holders\nPrice is ${fiatFormat.format(parseFloat(dbTicker.value))}`,
         );
       } catch (err) {
         await ctx.reply("Unable to get token info");
