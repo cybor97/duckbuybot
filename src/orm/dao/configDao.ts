@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { IsNull, Not, Repository } from "typeorm";
 import AppDataSource from "..";
 import { Config } from "../entities/config";
 
@@ -41,10 +41,23 @@ export class ConfigDao {
     await this.configRepository.save(data);
   }
 
-  public async getTokenAddresses() {
-    return this.configRepository.query(
-      `select distinct tokenAddress from config where tokenAddress is not null`,
-    );
+  public async getTokenAddresses(): Promise<string[]> {
+    const configs = await this.configRepository.find({
+      select: ["tokenAddress"],
+      where: { tokenAddress: Not(IsNull()) },
+    });
+    const addresses = Array.from(
+      new Set(configs.map((config) => config.tokenAddress)),
+    ).filter(Boolean);
+    return addresses as string[];
+  }
+
+  public async stillExists(chatId: string): Promise<boolean> {
+    return !!(await this.configRepository.findOne({ where: { chatId } }));
+  }
+
+  public async deleteForChat(chatId: string): Promise<void> {
+    await this.configRepository.delete({ chatId });
   }
 
   public async findConfigsByAddress(address: string) {

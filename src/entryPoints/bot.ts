@@ -27,9 +27,20 @@ export async function initBot() {
 
   const telegraf = new Telegraf(process.env.BOT_TOKEN as string);
 
-  telegraf.telegram.setMyCommands([{ command: "start", description: "Start" }]);
+  telegraf.telegram.setMyCommands([
+    { command: "start", description: "Start" },
+    { command: "delete", description: "Delete configuration for chat" },
+  ]);
   telegraf.on("message", async (ctx) => {
     const config = await configDao.findOrCreateConfig(ctx.chat.id.toString());
+
+    // @ts-expect-error message.text is string | undefined
+    if (ctx.message.text === "/delete") {
+      await configDao.deleteForChat(ctx.chat.id.toString());
+      await ctx.reply("Configuration deleted, I won't disturb you anymore");
+      return;
+    }
+
     if (!config.value.tokenRequested) {
       await ctx.reply("Please send me an address of token to track");
       config.value.tokenRequested = true;

@@ -3,10 +3,12 @@ import { Config } from "../orm/entities/config";
 import { JettonHolders, JettonInfo } from "tonapi-sdk-js";
 import { getNotification } from "../content";
 import logger from "./logger";
+import { ConfigDao } from "../orm/dao/configDao";
 
 export async function broadcastNotification(opts: {
   telegraf: Telegraf;
   configs: Config[];
+  configDao: ConfigDao;
   address: JettonHolders["addresses"][0];
   tokenInfo: JettonInfo;
   tickerValue: string | null;
@@ -16,6 +18,7 @@ export async function broadcastNotification(opts: {
   const {
     telegraf,
     configs,
+    configDao,
     address,
     tokenInfo,
     isNewHolder,
@@ -25,7 +28,7 @@ export async function broadcastNotification(opts: {
   for (const config of configs) {
     if (
       config.value.minBuy === null ||
-      // No matter in this case true or false :D 
+      // No matter in this case true or false :D
       // This field is always null (no value yet), string (limit set) or boolean (false, no limit)
       typeof config.value.minBuy === "boolean" ||
       parseFloat(diff) > parseFloat(config.value.minBuy)
@@ -33,6 +36,11 @@ export async function broadcastNotification(opts: {
       logger.info(
         `Broadcasting notification to ${config.chatId} (${diff} > ${config.value.minBuy})`,
       );
+      const stillExists = await configDao.stillExists(config.chatId);
+      if (!stillExists) {
+        logger.warn(`Chat ${config.chatId} no longer exists, skipping`);
+        continue;
+      }
       const content = getNotification({
         address,
         tokenInfo,

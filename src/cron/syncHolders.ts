@@ -17,7 +17,7 @@ export async function syncHolders(opts: {
 }) {
   const { telegraf, configDao, holderDao, tickerDao, client } = opts;
   const tokenAddresses = await configDao.getTokenAddresses();
-  for (const { tokenAddress } of tokenAddresses) {
+  for (const tokenAddress of tokenAddresses) {
     const tokenInfo = await client.jettons.getJettonInfo(tokenAddress);
 
     const holders: JettonHolders = { addresses: [], total: 0 };
@@ -65,6 +65,7 @@ export async function syncHolders(opts: {
           await broadcastNotification({
             telegraf,
             configs,
+            configDao,
             address: holder,
             tokenInfo,
             isNewHolder: true,
@@ -85,6 +86,7 @@ export async function syncHolders(opts: {
           await broadcastNotification({
             telegraf,
             configs,
+            configDao,
             address: holder,
             tokenInfo,
             isNewHolder: false,
