@@ -45,9 +45,8 @@ export function getNotification(data: NotificationData) {
 
     ${emoji ?? "🦆"}
     
-    💰Spent: ${spentSubstring}
-    🧳Bought: ${balanceSubstring}
-    ${isNewHolder ? "👋New Holder! Welcome" : ""}
+    🧳Bought: ${balanceSubstring} (${spentSubstring})
+    ${isNewHolder ? "\n👋New Holder! Welcome!\n" : ""}
     📊Market cap: ${marketcapSubstring}
     💸Check buyers [wallet](https://tonviewer.com/${address.address})
     👨${tokenInfo.holders_count} Holders`
