@@ -102,7 +102,7 @@ export async function initBot() {
     if (!config.value.emojiRequested) {
       config.value.emojiRequested = true;
       await configDao.updateConfig(config);
-      await ctx.reply("Please send me some emoji");
+      await ctx.reply("Please send me some emoji or 'no' to disable");
       return;
     }
     if (config.value.emojiRequested && config.value.emoji === null) {
@@ -110,6 +110,7 @@ export async function initBot() {
       if (ctx.message.text?.toLowerCase() === "no") {
         config.value.emoji = false;
         await ctx.reply("Okay, got it");
+        return;
       }
       // @ts-expect-error message.text is string | undefined
       if (ctx.message.text?.length >= 1) {
@@ -122,7 +123,9 @@ export async function initBot() {
     if (!config.value.gifRequested) {
       config.value.gifRequested = true;
       await configDao.updateConfig(config);
-      await ctx.reply("Please send me some animation");
+      await ctx.reply(
+        "Please send me some animation or video or 'no' to disable",
+      );
       return;
     }
     if (config.value.gifRequested && config.value.gif === null) {
@@ -151,7 +154,7 @@ export async function initBot() {
       config.value.minBuyRequested = true;
       await configDao.updateConfig(config);
       await ctx.reply(
-        "Please send me the minimum amount of tokens to care about",
+        "Please send me the minimum amount of tokens to care about or 'no' to notify about all purchases",
       );
       return;
     }
