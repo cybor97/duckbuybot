@@ -2,6 +2,7 @@ import { Telegraf } from "telegraf";
 import { Config } from "../orm/entities/config";
 import { JettonHolders, JettonInfo } from "tonapi-sdk-js";
 import { getNotification } from "../content";
+import logger from "./logger";
 
 export async function broadcastNotification(opts: {
   telegraf: Telegraf;
@@ -23,6 +24,9 @@ export async function broadcastNotification(opts: {
   } = opts;
   for (const config of configs) {
     if (config.value.minBuy === null || diff > config.value.minBuy) {
+      logger.info(
+        `Broadcasting notification to ${config.chatId} (${diff} > ${config.value.minBuy})`,
+      );
       const content = getNotification({
         address,
         tokenInfo,
