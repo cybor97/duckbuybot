@@ -23,7 +23,13 @@ export async function broadcastNotification(opts: {
     diff,
   } = opts;
   for (const config of configs) {
-    if (config.value.minBuy === null || diff > config.value.minBuy) {
+    if (
+      config.value.minBuy === null ||
+      // No matter in this case true or false :D 
+      // This field is always null (no value yet), string (limit set) or boolean (false, no limit)
+      typeof config.value.minBuy === "boolean" ||
+      parseFloat(diff) > parseFloat(config.value.minBuy)
+    ) {
       logger.info(
         `Broadcasting notification to ${config.chatId} (${diff} > ${config.value.minBuy})`,
       );
