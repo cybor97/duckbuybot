@@ -33,6 +33,7 @@ export async function syncHolders(opts: {
       holders.addresses = holders.addresses.concat(holdersChunk.addresses);
       holders.total = holdersChunk.total;
       total = holdersChunk.total;
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     const configs = await configDao.findConfigsByAddress(tokenAddress);
 
