@@ -4,7 +4,7 @@ dotenv.config();
 
 import { Telegraf } from "telegraf";
 import { ConfigDao } from "../orm/dao/configDao";
-import { Address, toNano } from "@ton/core";
+import { Address } from "@ton/core";
 import { HttpClient, Api } from "tonapi-sdk-js";
 import { TickerDao } from "../orm/dao/tickerDao";
 import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
@@ -33,6 +33,16 @@ export async function initBot() {
   ]);
   telegraf.on("message", async (ctx) => {
     const config = await configDao.findOrCreateConfig(ctx.chat.id.toString());
+
+    if (ctx.chat.type !== "private") {
+      const chatMember = await ctx.telegram.getChatMember(
+        ctx.chat.id,
+        ctx.from.id,
+      );
+      if (!chatMember || chatMember.status !== "administrator") {
+        return;
+      }
+    }
 
     // @ts-expect-error message.text is string | undefined
     if (ctx.message.text === "/delete") {
