@@ -67,9 +67,24 @@ export async function sendNotification(
   config: Config,
   content: string,
 ): Promise<void> {
+  const inline_keyboard = [
+    [
+      {
+        text: "Buy with DeDust.io",
+        url: `https://dedust.io/swap/TON/DUCK`,
+      },
+      {
+        text: "Buy with STON.fi",
+        url: `https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=DUCK`,
+      },
+    ],
+  ];
   if (!config.value.gif) {
     await telegraf.telegram.sendMessage(config.chatId, content, {
       parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard,
+      },
     });
     return;
   }
@@ -81,6 +96,9 @@ export async function sendNotification(
     {
       parse_mode: "Markdown",
       caption: content,
+      reply_markup: {
+        inline_keyboard,
+      },
     },
   );
 }
