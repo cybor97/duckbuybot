@@ -4,6 +4,7 @@ import { JettonHolders, JettonInfo } from "tonapi-sdk-js";
 import { getNotification } from "../content";
 import logger from "./logger";
 import { ConfigDao } from "../orm/dao/configDao";
+import { inspect } from "util";
 
 export async function broadcastNotification(opts: {
   telegraf: Telegraf;
@@ -50,7 +51,13 @@ export async function broadcastNotification(opts: {
         emoji:
           typeof config.value.emoji === "boolean" ? null : config.value.emoji,
       });
-      await sendNotification(telegraf, config, content);
+      try {
+        await sendNotification(telegraf, config, content);
+      } catch (e) {
+        logger.error(
+          `Error sending notification to ${config.chatId} ${inspect(e)}`,
+        );
+      }
     }
   }
 }
