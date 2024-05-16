@@ -185,7 +185,7 @@ export async function initBot() {
       // @ts-expect-error message.text is string | undefined
       if (ctx.message.text?.length >= 1) {
         // @ts-expect-error message.text is string | undefined
-        config.value.minBuy = toNano(ctx.message?.text).toString();
+        config.value.minBuy = ctx.message.text.toString();
         await configDao.updateConfig(config);
         await ctx.reply("Okay, I'll use this amount");
       }
