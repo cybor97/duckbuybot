@@ -171,15 +171,16 @@ export async function initBot() {
           // @ts-expect-error message.animation is expected
           ctx.message.video?.file_id ?? ctx.message.animation?.file_id;
         // @ts-expect-error message.photo is expected
+        await ctx.replyWithVideo(config.value.gif);
+        // @ts-expect-error message.photo is expected
       } else if (ctx.message.photo) {
         config.value.photo =
           // @ts-expect-error message.photo is expected
           ctx.message.photo[ctx.message.photo.length - 1]?.file_id;
+        await ctx.replyWithPhoto(config.value.photo as string);
       }
       await configDao.updateConfig(config);
       await ctx.reply("Okay, I'll use this animation");
-      // @ts-expect-error message.animation is expected
-      await ctx.replyWithVideo(config.value.gif);
     }
 
     if (!config.value.minBuyRequested) {
