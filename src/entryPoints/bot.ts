@@ -36,7 +36,7 @@ export async function initBot() {
     if (ctx.chat.type !== "private") {
       const chatMember = await ctx.telegram.getChatMember(
         ctx.chat.id,
-        ctx.from.id,
+        ctx.message.from.id,
       );
       if (!chatMember || chatMember.status !== "administrator") {
         return;
