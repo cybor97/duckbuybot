@@ -79,7 +79,7 @@ export async function sendNotification(
       },
     ],
   ];
-  if (!config.value.gif) {
+  if (!config.value.gif && !config.value.photo) {
     await telegraf.telegram.sendMessage(config.chatId, content, {
       parse_mode: "Markdown",
       reply_markup: {
@@ -89,16 +89,32 @@ export async function sendNotification(
     return;
   }
 
-  await telegraf.telegram.sendAnimation(
-    config.chatId,
-    // @ts-expect-error message.animation is expected
-    config.value.gif,
-    {
-      parse_mode: "Markdown",
-      caption: content,
-      reply_markup: {
-        inline_keyboard,
+  if (config.value.gif) {
+    await telegraf.telegram.sendAnimation(
+      config.chatId,
+      // @ts-expect-error message.animation is expected
+      config.value.gif,
+      {
+        parse_mode: "Markdown",
+        caption: content,
+        reply_markup: {
+          inline_keyboard,
+        },
       },
-    },
-  );
+    );
+  }
+  if (config.value.photo) {
+    await telegraf.telegram.sendPhoto(
+      config.chatId,
+      // @ts-expect-error message.photo is expected
+      config.value.photo,
+      {
+        parse_mode: "Markdown",
+        caption: content,
+        reply_markup: {
+          inline_keyboard,
+        },
+      },
+    );
+  }
 }

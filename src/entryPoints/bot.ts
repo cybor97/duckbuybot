@@ -146,7 +146,11 @@ export async function initBot() {
       );
       return;
     }
-    if (config.value.gifRequested && config.value.gif === null) {
+    if (
+      config.value.gifRequested &&
+      config.value.gif === null &&
+      (config.value.photo ?? null) === null
+    ) {
       // @ts-expect-error message.text is string | undefined
       if (ctx.message.text?.toLowerCase() === "no") {
         config.value.gif = false;
@@ -154,14 +158,22 @@ export async function initBot() {
         return;
       }
       // @ts-expect-error message.animation is expected
-      if (!ctx.message.animation && !ctx.message.video) {
+      if (!ctx.message.animation && !ctx.message.video && !ctx.message.photo) {
         await ctx.reply("Please send me an animation (video or gif)");
         return;
       }
 
-      config.value.gif =
-        // @ts-expect-error message.animation is expected
-        ctx.message.video?.file_id ?? ctx.message.animation?.file_id;
+      // @ts-expect-error message.animation is expected
+      if (ctx.message.animation || ctx.message.video) {
+        config.value.gif =
+          // @ts-expect-error message.animation is expected
+          ctx.message.video?.file_id ?? ctx.message.animation?.file_id;
+        // @ts-expect-error message.photo is expected
+      } else if (ctx.message.photo) {
+        config.value.photo =
+          // @ts-expect-error message.photo is expected
+          ctx.message.photo[ctx.message.photo.length - 1]?.file_id;
+      }
       await configDao.updateConfig(config);
       await ctx.reply("Okay, I'll use this animation");
       // @ts-expect-error message.animation is expected

@@ -24,6 +24,7 @@ export class ConfigDao {
       newConfig.chatId = chatId;
       newConfig.value = {
         gif: null,
+        photo: null,
         emoji: null,
         minBuy: null,
         tokenRequested: false,
