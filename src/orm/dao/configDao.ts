@@ -17,8 +17,8 @@ export class ConfigDao {
     return ConfigDao.dao;
   }
 
-  public async findOrCreateConfig(chatId: string): Promise<Config> {
-    const config = await this.configRepository.findOne({ where: { chatId } });
+  public async findOrCreateConfig(chatId: string): Promise<[Config, boolean]> {
+    let config = await this.configRepository.findOne({ where: { chatId } });
     if (!config) {
       const newConfig = new Config();
       newConfig.chatId = chatId;
@@ -33,9 +33,10 @@ export class ConfigDao {
         minBuyRequested: false,
       };
       await this.configRepository.save(newConfig);
-      return this.findOrCreateConfig(chatId);
+      const config = await this.configRepository.findOne({ where: { chatId } });
+      return [config as Config, true];
     }
-    return config;
+    return [config, false];
   }
 
   public async updateConfig(data: Partial<Config>): Promise<void> {
