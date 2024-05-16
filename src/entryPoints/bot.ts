@@ -38,7 +38,11 @@ export async function initBot() {
         ctx.chat.id,
         ctx.message.from.id,
       );
-      if (!chatMember || chatMember.status !== "administrator") {
+      if (
+        !chatMember ||
+        (chatMember.status !== "administrator" &&
+          chatMember.status !== "creator")
+      ) {
         return;
       }
     }
