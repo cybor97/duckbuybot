@@ -8,10 +8,22 @@ export interface NotificationData {
   isNewHolder: boolean;
   tickerValue: string | null;
   emoji: string | null;
+  transactionId: string;
+  tokenAmount: string;
+  dex: string;
 }
 
 export function getNotification(data: NotificationData) {
-  const { tickerValue, isNewHolder, emoji, address, tokenInfo } = data;
+  const {
+    tickerValue,
+    isNewHolder,
+    emoji,
+    address,
+    tokenInfo,
+    transactionId,
+    tokenAmount,
+    dex,
+  } = data;
   const symbol = tokenInfo.metadata.symbol;
 
   const tickerValueFloat = tickerValue ? parseFloat(tickerValue) : null;
@@ -23,7 +35,7 @@ export function getNotification(data: NotificationData) {
   });
   const cryptoFormat = new Intl.NumberFormat("en", { style: "decimal" });
 
-  const tokenBalance = Math.floor(parseFloat(fromNano(address.balance)));
+  const tokenBalance = Math.floor(parseFloat(tokenAmount));
 
   const spentSubstring =
     tickerValueFloat === null
@@ -40,12 +52,17 @@ export function getNotification(data: NotificationData) {
 
   const balanceSubstring = `${cryptoFormat.format(tokenBalance)} ${symbol}`;
 
+  const dexName = {
+    dedust: "DeDust",
+    stonfi: "STON.fi",
+  }[dex];
+
   return (
     `🚨 ${symbol} New Buy!🚨
 
     ${emoji ?? "🦆"}
     
-    🧳Bought: ${balanceSubstring} (${spentSubstring})
+    🧳Bought: ${balanceSubstring} (${spentSubstring}) via [${dexName}](https://tonviewer.com/transaction/${transactionId})
     ${isNewHolder ? "\n👋New Holder! Welcome!\n" : ""}
     📊Market cap: ${marketcapSubstring}
     💸Check buyers [wallet](https://tonviewer.com/${address.address})

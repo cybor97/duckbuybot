@@ -1,12 +1,19 @@
 import { Telegraf } from "telegraf";
-import { Api, HttpClient, JettonHolders } from "tonapi-sdk-js";
+import { Api, HttpClient, JettonHolders, Transaction } from "tonapi-sdk-js";
 
 import { ConfigDao } from "../orm/dao/configDao";
 import { HolderDao } from "../orm/dao/holderDao";
 import { broadcastNotification } from "../utils/telegram";
-import { fromNano } from "@ton/core";
 import { TickerDao } from "../orm/dao/tickerDao";
 import logger from "../utils/logger";
+import { JettonTransfer, getNonBouncedJettonTransfer } from "../utils/jetton";
+import { findInterface } from "../utils/traces";
+import { Holder } from "../orm/entities/holder";
+import { waitTONRPSDelay } from "../utils/runtime";
+import { inspect } from "util";
+
+// 2h in seconds
+const LAST_TRANSACTION_TIMEFRAME = 7200;
 
 export async function syncHolders(opts: {
   telegraf: Telegraf;
@@ -19,12 +26,15 @@ export async function syncHolders(opts: {
   const tokenAddresses = await configDao.getTokenAddresses();
   for (const tokenAddress of tokenAddresses) {
     const tokenInfo = await client.jettons.getJettonInfo(tokenAddress);
+    await waitTONRPSDelay();
 
     const holders: JettonHolders = { addresses: [], total: 0 };
     let total: number | null = null;
     for (let i = 0; total === null || i < total; i += 1000) {
       logger.info(
-        `Fetching holders for ${tokenAddress} ${i}-${i + 1000}/${total}`,
+        `Fetching holders for ${tokenAddress} ${i}-${i + 1000}/${
+          total ?? "unknown"
+        }`,
       );
       const holdersChunk = await client.jettons.getJettonHolders(tokenAddress, {
         limit: 1000,
@@ -33,7 +43,7 @@ export async function syncHolders(opts: {
       holders.addresses = holders.addresses.concat(holdersChunk.addresses);
       holders.total = holdersChunk.total;
       total = holdersChunk.total;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitTONRPSDelay();
     }
     const configs = await configDao.findConfigsByAddress(tokenAddress);
 
@@ -45,64 +55,158 @@ export async function syncHolders(opts: {
 
     const dbHolders = await holderDao.getAllHolders(tokenAddress);
     const dbHoldersMap = dbHolders.reduce((acc, holder) => {
-      acc.set(holder.address, holder.balance);
+      acc.set(holder.address, holder);
       return acc;
-    }, new Map<string, string>());
+    }, new Map<string, Holder>());
 
     const ticker = await tickerDao.getTicker(tokenAddress);
     const tickerValue = ticker?.value ?? null;
 
     for (const holder of holders.addresses) {
-      if (firstSync) {
-        logger.info(
-          `First sync for ${tokenAddress} ${holders.addresses.indexOf(
-            holder,
-          )}/${holders.addresses.length}`,
-        );
-      }
-      const dbHolderBalance = dbHoldersMap.get(holder.address);
-      if (dbHolderBalance === undefined) {
-        if (!firstSync) {
-          await broadcastNotification({
-            telegraf,
-            configs,
-            configDao,
-            address: holder,
-            tokenInfo,
-            isNewHolder: true,
-            tickerValue,
-            diff: fromNano(holder.balance),
-          });
+      logger.info(
+        `Syncing ${tokenAddress} ${holders.addresses.indexOf(holder)}/${
+          holders.addresses.length
+        }. First sync: ${firstSync}`,
+      );
+
+      const dbHolder = dbHoldersMap.get(holder.address);
+      const transactionsData = await getPurchasesByHolder(
+        dbHolder,
+        client,
+        holder,
+      );
+
+      let maxLT: null | number = null;
+      for (const { transaction, dex } of transactionsData) {
+        if (dbHolder === undefined) {
+          if (!firstSync) {
+            await broadcastNotification({
+              telegraf,
+              configs,
+              configDao,
+              address: holder,
+              tokenInfo,
+              isNewHolder: true,
+              tickerValue,
+              transaction,
+              dex,
+            });
+          }
+        } else if (BigInt(transaction.amount) > 0) {
+          if (!firstSync) {
+            await broadcastNotification({
+              telegraf,
+              configs,
+              configDao,
+              address: holder,
+              tokenInfo,
+              isNewHolder: false,
+              tickerValue,
+              transaction,
+              dex,
+            });
+          }
         }
-        await holderDao.findOrUpdateHolder(
-          tokenAddress,
-          holder.address,
-          holder.balance,
-        );
-        continue;
-      }
-      if (holder.balance > dbHolderBalance) {
-        const diff = fromNano(BigInt(holder.balance) - BigInt(dbHolderBalance));
-        if (!firstSync) {
-          await broadcastNotification({
-            telegraf,
-            configs,
-            configDao,
-            address: holder,
-            tokenInfo,
-            isNewHolder: false,
-            tickerValue,
-            diff,
-          });
+        if (maxLT === null || transaction.lt > maxLT) {
+          maxLT = transaction.lt;
         }
-        await holderDao.findOrUpdateHolder(
-          tokenAddress,
-          holder.address,
-          holder.balance,
-        );
+      }
+      await holderDao.findOrUpdateHolder(
+        tokenAddress,
+        holder.address,
+        holder.balance,
+        maxLT?.toString() ?? null,
+      );
+    }
+
+    await holderDao.setHoldersUpdated(tokenAddress);
+    await configDao.notFirstSync(tokenAddress);
+  }
+}
+
+async function getPurchasesByHolder(
+  dbHolder: Holder | undefined,
+  client: Api<HttpClient>,
+  holder: JettonHolders["addresses"][0],
+) {
+  const result: { transaction: JettonTransfer; dex: string }[] = [];
+
+  try {
+    let lastLT: number | undefined = undefined;
+    if (dbHolder?.lastLT) {
+      lastLT = parseInt(dbHolder.lastLT);
+    }
+    const jettonWalletAddress = holder.address;
+
+    let transactions: Transaction[] = [];
+    let hashes = new Set<string>();
+    let lastUpdatedHolderTimestamp: number | undefined = undefined;
+    if (dbHolder?.updatedAt && dbHolder.updatedAt instanceof Date) {
+      lastUpdatedHolderTimestamp = dbHolder.updatedAt.getTime() / 1000;
+    }
+    const lastUpdatedTimestamp =
+      (lastUpdatedHolderTimestamp ?? Date.now()) - LAST_TRANSACTION_TIMEFRAME;
+
+    let currentLowestLT: number | null = null;
+    let currentLowestTimestamp: number | null = null;
+    while (
+      currentLowestLT === null ||
+      currentLowestTimestamp === null ||
+      (lastLT !== undefined &&
+        currentLowestLT !== null &&
+        currentLowestLT > lastLT) ||
+      (currentLowestTimestamp !== null &&
+        currentLowestTimestamp > lastUpdatedTimestamp)
+    ) {
+      const txData = await client.blockchain.getBlockchainAccountTransactions(
+        jettonWalletAddress,
+        {
+          after_lt: lastLT,
+          before_lt: currentLowestLT ?? undefined,
+          limit: 10,
+        },
+      );
+      await waitTONRPSDelay();
+      if (txData.transactions.length === 0) {
+        break;
+      }
+      currentLowestLT = Math.min(...txData.transactions.map((tx) => tx.lt));
+      currentLowestTimestamp = Math.min(
+        ...txData.transactions.map((tx) => tx.utime),
+      );
+
+      const newTransactions = txData.transactions
+        .filter((tx) => !hashes.has(tx.hash))
+        .filter((tx) => lastLT === undefined || tx.lt > lastLT);
+      if (newTransactions.length > 0) {
+        transactions.push(...newTransactions);
+        txData.transactions.forEach((tx) => hashes.add(tx.hash));
+      } else {
+        logger.warn("All transactions already processed");
+        break;
       }
     }
 
-    await configDao.notFirstSync(tokenAddress);
+    const internalTokenTransfers = transactions
+      .map((tx) => getNonBouncedJettonTransfer(tx))
+      .filter(Boolean) as JettonTransfer[];
+
+    for (const internalTokenTransfer of internalTokenTransfers) {
+      await waitTONRPSDelay();
+      const trace = await client.traces.getTrace(internalTokenTransfer.id);
+      const stonfiTransaction = findInterface(trace, "stonfi_router");
+      const dedustTransaction = findInterface(trace, "dedust_vault");
+      if (stonfiTransaction || dedustTransaction) {
+        result.push({
+          transaction: internalTokenTransfer,
+          dex: stonfiTransaction ? "stonfi" : "dedust",
+        });
+      }
+    }
+  } catch (e) {
+    logger.error(
+      `Failed to get transactions for ${holder.address}, error: ${inspect(e)}`,
+    );
   }
+  return result;
 }

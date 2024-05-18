@@ -21,6 +21,7 @@ export class HolderDao {
     tokenAddress: string,
     address: string,
     balance: string,
+    lastLT: string | null,
   ): Promise<void> {
     const holder = await this.holdersRepository.findOne({ where: { address } });
     if (!holder) {
@@ -28,11 +29,13 @@ export class HolderDao {
       newHolder.tokenAddress = tokenAddress;
       newHolder.address = address;
       newHolder.balance = balance;
+      newHolder.lastLT = lastLT;
       await this.holdersRepository.save(newHolder);
       return;
     }
     if (balance !== holder.balance) {
       holder.balance = balance;
+      holder.lastLT = lastLT;
       await this.holdersRepository.save(holder);
     }
   }
@@ -41,5 +44,12 @@ export class HolderDao {
     return this.holdersRepository.find({
       where: { tokenAddress },
     });
+  }
+
+  public async setHoldersUpdated(tokenAddress: string): Promise<void> {
+    await this.holdersRepository.update(
+      { tokenAddress },
+      { updatedAt: new Date() },
+    );
   }
 }

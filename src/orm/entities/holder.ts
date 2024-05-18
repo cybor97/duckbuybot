@@ -13,12 +13,15 @@ export class Holder {
   id: number;
 
   @Column("varchar")
-  @Index("address_idx", { unique: true })
+  @Index("address_idx", { unique: false })
   address: string;
 
   @Column("varchar")
   @Index("holder_token_address_idx", { unique: false })
   tokenAddress: string;
+
+  @Column("varchar", { nullable: true })
+  lastLT: string | null;
 
   @Column("varchar")
   balance: string;

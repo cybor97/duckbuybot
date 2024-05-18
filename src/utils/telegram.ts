@@ -1,10 +1,13 @@
+import { inspect } from "util";
 import { Telegraf } from "telegraf";
-import { Config } from "../orm/entities/config";
 import { JettonHolders, JettonInfo } from "tonapi-sdk-js";
+
+import { Config } from "../orm/entities/config";
 import { getNotification } from "../content";
 import logger from "./logger";
 import { ConfigDao } from "../orm/dao/configDao";
-import { inspect } from "util";
+import { JettonTransfer } from "./jetton";
+import { fromNano } from "@ton/core";
 
 export async function broadcastNotification(opts: {
   telegraf: Telegraf;
@@ -14,7 +17,8 @@ export async function broadcastNotification(opts: {
   tokenInfo: JettonInfo;
   tickerValue: string | null;
   isNewHolder: boolean;
-  diff: string;
+  transaction: JettonTransfer;
+  dex: string;
 }) {
   const {
     telegraf,
@@ -24,18 +28,20 @@ export async function broadcastNotification(opts: {
     tokenInfo,
     isNewHolder,
     tickerValue,
-    diff,
+    transaction,
+    dex,
   } = opts;
+  const amount = fromNano(transaction.amount);
   for (const config of configs) {
     if (
       config.value.minBuy === null ||
       // No matter in this case true or false :D
       // This field is always null (no value yet), string (limit set) or boolean (false, no limit)
       typeof config.value.minBuy === "boolean" ||
-      parseFloat(diff) > parseFloat(config.value.minBuy)
+      parseFloat(amount) > parseFloat(config.value.minBuy)
     ) {
       logger.info(
-        `Broadcasting notification to ${config.chatId} (${diff} > ${config.value.minBuy})`,
+        `Broadcasting notification to ${config.chatId} (${amount} > ${config.value.minBuy})`,
       );
       const stillExists = await configDao.stillExists(config.chatId);
       if (!stillExists) {
@@ -50,6 +56,9 @@ export async function broadcastNotification(opts: {
         // it will always be string, null or false. True is never going to happen, otherwise noone cares :D
         emoji:
           typeof config.value.emoji === "boolean" ? null : config.value.emoji,
+        tokenAmount: amount,
+        transactionId: transaction.id,
+        dex,
       });
       try {
         await sendNotification(telegraf, config, content);

@@ -1,7 +1,3 @@
-import dotenv from "dotenv";
-
-dotenv.config();
-
 import { Telegraf } from "telegraf";
 import { ConfigDao } from "../orm/dao/configDao";
 import { Address } from "@ton/core";
@@ -9,6 +5,7 @@ import { HttpClient, Api } from "tonapi-sdk-js";
 import { TickerDao } from "../orm/dao/tickerDao";
 import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
 import { getFiatCurrency } from "../utils/currency";
+import { waitTONRPSDelay } from "../utils/runtime";
 
 export async function initBot() {
   const httpClient = new HttpClient({
@@ -73,6 +70,8 @@ export async function initBot() {
       }
       try {
         const tokenData = await client.jettons.getJettonInfo(tokenAddress);
+        await waitTONRPSDelay();
+
         if (tokenData.holders_count === 0) {
           await ctx.reply(`There are no holders for token ${tokenAddress}`);
           return;
