@@ -70,6 +70,10 @@ export async function syncHolders(opts: {
       );
 
       const dbHolder = dbHoldersMap.get(holder.address);
+      if (dbHolder && dbHolder.balance === holder.balance) {
+        continue;
+      }
+
       const transactionsData = await getPurchasesByHolder(
         dbHolder,
         client,
