@@ -5,7 +5,7 @@ This project is a Telegram bot that sends notifications about new TON token buys
 ## Features
 
 - Monitors DeDust and STON.fi for new token buys
-- Sends notifications to specified Telegram channels or groups with details about the new buys, including: 
+- Sends notifications to specified Telegram channels or groups with details about the new buys, including:
   - token information
   - transaction details
   - market cap
@@ -16,7 +16,6 @@ This project is a Telegram bot that sends notifications about new TON token buys
   - gif/video
   - threshold value
   - token to monitor
-
 
 ## Getting Started
 
@@ -43,15 +42,23 @@ COINMARKETCAP_KEY=your_coinmarketcap_key
 
 Replace `your_telegram_bot_token`, `your_tonapi_key`, and `your_coinmarketcap_key` with your actual values.
 
+4. Set up DB:
+   Bot uses SQLite, therefore it doesn't require any additional DB software to be installed. Just run the following command to init DB
 
-4. Run the bot:
+```bash
+yarn db:migration:run
+```
+
+5. Run the bot:
 
 For local environment
+
 ```bash
 yarn dev
 ```
 
 Or for production environment
+
 ```bash
 pm2 start ecosystem.config.js
 ```
