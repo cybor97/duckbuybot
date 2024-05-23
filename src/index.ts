@@ -12,10 +12,10 @@ async function main() {
   await AppDataSource.initialize();
   logger.info("Data Source has been initialized!");
   if (process.env.EXEC_MODE === "bot") {
-    initBot();
+    await initBot();
   }
   if (process.env.EXEC_MODE === "cron") {
-    initCron();
+    await initCron();
   }
 }
 

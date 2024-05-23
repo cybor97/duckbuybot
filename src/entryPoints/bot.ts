@@ -217,6 +217,6 @@ export async function initBot() {
       }
     }
   });
-  await telegraf.launch();
+  telegraf.launch();
   logger.info("Bot started");
 }
