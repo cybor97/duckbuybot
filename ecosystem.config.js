@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "duckbuybot-bot",
       exec_mode: "cluster",
-      instances: 2,
+      instances: 1,
       watch: true,
       autostart: true,
       max_memory_restart: "1G",
