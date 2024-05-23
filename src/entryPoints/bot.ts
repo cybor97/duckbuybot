@@ -6,6 +6,7 @@ import { TickerDao } from "../orm/dao/tickerDao";
 import { getTONTokenId, getTicker } from "../utils/coinmarketcap";
 import { getFiatCurrency } from "../utils/currency";
 import { waitTONRPSDelay } from "../utils/runtime";
+import logger from "../utils/logger";
 
 export async function initBot() {
   const httpClient = new HttpClient({
@@ -216,5 +217,6 @@ export async function initBot() {
       }
     }
   });
-  telegraf.launch();
+  await telegraf.launch();
+  logger.info("Bot started");
 }

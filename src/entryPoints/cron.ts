@@ -29,6 +29,8 @@ export async function initCron() {
 
   scheduleSyncHolders({ telegraf, configDao, holderDao, tickerDao, client });
   scheduleTickerUpdate({ tickerDao });
+
+  logger.info("Cron inited");
 }
 
 function scheduleSyncHolders(opts: {
