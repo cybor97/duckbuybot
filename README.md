@@ -22,7 +22,7 @@ This project is a Telegram bot that sends notifications about new TON token buys
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/cyborg97/duckbuybot.git
+git clone https://github.com/cybor97/duckbuybot.git
 cd duckbuybot
 ```
 
@@ -38,12 +38,20 @@ yarn install
 BOT_TOKEN=your_telegram_bot_token
 TONAPI_KEY=your_tonapi_key
 COINMARKETCAP_KEY=your_coinmarketcap_key
+TICKER_UPDATE_CRON="*/10 * * * *"
+FIAT_CURRENCY=USD
+RPS_DELAY=100
 ```
 
 Replace `your_telegram_bot_token`, `your_tonapi_key`, and `your_coinmarketcap_key` with your actual values.
 
+The provided values for `TICKER_UPDATE_CRON` and `FIAT_CURRENCY` are there by default, so it makes sense to set them only if you want to change this behaviour. However take into consideration that fiat currency should be one of those listed on https://coinmarketcap.com/ . Also too "frequent" value for `TICKER_UPDATE_CRON` can drain your API usage limit, but too "rare" may result in sending irrelevant data.
+
+Value for `RPS_DELAY` depends on your https://tonapi.io/ account configuration. You can safely set it to 1000/requests_per_second. For the free plan at the moment of publishing RPS_DELAY would be 1000 which is default.
+
 4. Set up DB:
-   Bot uses SQLite, therefore it doesn't require any additional DB software to be installed. Just run the following command to init DB
+   
+Bot uses SQLite, therefore it doesn't require any additional DB software to be installed. Just run the following command to init DB
 
 ```bash
 yarn db:migration:run
