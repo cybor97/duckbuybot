@@ -41,6 +41,7 @@ COINMARKETCAP_KEY=your_coinmarketcap_key
 TICKER_UPDATE_CRON="*/10 * * * *"
 FIAT_CURRENCY=USD
 RPS_DELAY=100
+DEX_CONFIG=stonfi_router:STON.fi,dedust_vault:DeDust
 ```
 
 Replace `your_telegram_bot_token`, `your_tonapi_key`, and `your_coinmarketcap_key` with your actual values.
@@ -48,6 +49,8 @@ Replace `your_telegram_bot_token`, `your_tonapi_key`, and `your_coinmarketcap_ke
 The provided values for `TICKER_UPDATE_CRON` and `FIAT_CURRENCY` are there by default, so it makes sense to set them only if you want to change this behaviour. However take into consideration that fiat currency should be one of those listed on https://coinmarketcap.com/ . Also too "frequent" value for `TICKER_UPDATE_CRON` can drain your API usage limit, but too "rare" may result in sending irrelevant data.
 
 Value for `RPS_DELAY` depends on your https://tonapi.io/ account configuration. You can safely set it to 1000/requests_per_second. For the free plan at the moment of publishing RPS_DELAY would be 1000 which is default.
+
+Value for `DEX_CONFIG` should be comma-separated dex_interface_name:dex_display_name pairs. To get more context check out [TON docs](https://docs.ton.org/learn/glossary#dex), DEXes available on the [marketplace](https://ton.app/dex), [example](https://tonviewer.com/EQCMLWHcGz4AkNTnP6CTMG0Guo68_DTZ5Dc-AGHqtN8leJ0h) of such address.
 
 4. Set up DB:
    

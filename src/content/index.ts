@@ -1,6 +1,7 @@
 import { fromNano } from "@ton/core";
 import { JettonHolders, JettonInfo } from "tonapi-sdk-js";
 import { getFiatCurrency } from "../utils/currency";
+import { getDexConfig } from "../utils/config";
 
 export interface NotificationData {
   tokenInfo: JettonInfo;
@@ -52,10 +53,8 @@ export function getNotification(data: NotificationData) {
 
   const balanceSubstring = `${cryptoFormat.format(tokenBalance)} ${symbol}`;
 
-  const dexName = {
-    dedust: "DeDust",
-    stonfi: "STON.fi",
-  }[dex];
+  const dexConfig = getDexConfig();
+  const dexName = dexConfig.get(dex);
 
   return (
     `🚨 ${symbol} New Buy!🚨

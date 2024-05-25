@@ -11,9 +11,11 @@ import { findInterface } from "../utils/traces";
 import { Holder } from "../orm/entities/holder";
 import { waitTONRPSDelay } from "../utils/runtime";
 import { inspect } from "util";
+import { getDexConfig } from "../utils/config";
 
 // 2h in seconds
 const LAST_TRANSACTION_TIMEFRAME = 7200;
+const HOLDERS_CHUNK_SIZE = 1000;
 
 export async function syncHolders(opts: {
   telegraf: Telegraf;
@@ -30,9 +32,9 @@ export async function syncHolders(opts: {
 
     const holders: JettonHolders = { addresses: [], total: 0 };
     let total: number | null = null;
-    for (let i = 0; total === null || i < total; i += 1000) {
+    for (let i = 0; total === null || i < total; i += HOLDERS_CHUNK_SIZE) {
       logger.info(
-        `Fetching holders for ${tokenAddress} ${i}-${i + 1000}/${
+        `Fetching holders for ${tokenAddress} ${i}-${i + HOLDERS_CHUNK_SIZE}/${
           total ?? "unknown"
         }`,
       );
@@ -72,6 +74,37 @@ export async function syncHolders(opts: {
       const dbHolder = dbHoldersMap.get(holder.address);
       if (dbHolder && dbHolder.balance === holder.balance) {
         continue;
+      }
+      if (dbHolder === undefined) {
+        const poolAddress = await holderDao.getPoolAddress(
+          tokenAddress,
+          holder.address,
+        );
+        if (poolAddress) {
+          // skip pool addresses
+          continue;
+        }
+        if (!poolAddress) {
+          const walletData =
+            await client.blockchain.execGetMethodForBlockchainAccount(
+              holder.address,
+              "get_wallet_data",
+            );
+          const ownerAddress = walletData.decoded?.owner;
+          const addressInfo = await client.accounts.getAccount(ownerAddress);
+          const interfaces = addressInfo.interfaces ?? [];
+          if (interfaces.length > 0) {
+            const dexConfig = getDexConfig();
+            if (interfaces.some((inf) => dexConfig.has(inf))) {
+              logger.info(
+                `Found dex address ${ownerAddress} (via holder ${holder.address}) for token ${tokenAddress}, skipping...`,
+              );
+              // skip dex addresses
+              await holderDao.addPoolAddress(tokenAddress, holder.address);
+              continue;
+            }
+          }
+        }
       }
 
       const transactionsData = await getPurchasesByHolder(
@@ -198,12 +231,13 @@ async function getPurchasesByHolder(
     for (const internalTokenTransfer of internalTokenTransfers) {
       await waitTONRPSDelay();
       const trace = await client.traces.getTrace(internalTokenTransfer.id);
-      const stonfiTransaction = findInterface(trace, "stonfi_router");
-      const dedustTransaction = findInterface(trace, "dedust_vault");
-      if (stonfiTransaction || dedustTransaction) {
+      const interfaceConfig = getDexConfig();
+      const dexKeys = Array.from(interfaceConfig.keys());
+      const dexKey = dexKeys.find((key) => findInterface(trace, key));
+      if (dexKey) {
         result.push({
           transaction: internalTokenTransfer,
-          dex: stonfiTransaction ? "stonfi" : "dedust",
+          dex: dexKey,
         });
       }
     }
