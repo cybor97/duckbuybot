@@ -85,12 +85,14 @@ export async function syncHolders(opts: {
           continue;
         }
         if (!poolAddress) {
+          await waitTONRPSDelay();
           const walletData =
             await client.blockchain.execGetMethodForBlockchainAccount(
               holder.address,
               "get_wallet_data",
             );
           const ownerAddress = walletData.decoded?.owner;
+          await waitTONRPSDelay();
           const addressInfo = await client.accounts.getAccount(ownerAddress);
           const interfaces = addressInfo.interfaces ?? [];
           if (interfaces.length > 0) {
