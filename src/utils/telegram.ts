@@ -80,11 +80,11 @@ export async function sendNotification(
     [
       {
         text: "Buy with DeDust.io",
-        url: `https://dedust.io/swap/TON/DUCK`,
+        url: `https://dedust.io/swap/TON/${config.tokenAddress}`,
       },
       {
         text: "Buy with STON.fi",
-        url: `https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=DUCK`,
+        url: `https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=${config.tokenAddress}`,
       },
     ],
   ];
